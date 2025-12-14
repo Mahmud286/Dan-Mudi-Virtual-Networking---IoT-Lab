@@ -2,8 +2,8 @@ import React from 'react';
 
 interface LogoProps {
   className?: string;
-  primaryColor?: string; // The Flask color
-  secondaryColor?: string; // The Circuit color
+  primaryColor?: string; // Chip Color
+  secondaryColor?: string; // Traces Color
 }
 
 export const Logo: React.FC<LogoProps> = ({ 
@@ -18,54 +18,85 @@ export const Logo: React.FC<LogoProps> = ({
       xmlns="http://www.w3.org/2000/svg" 
       className={className}
     >
-      {/* Circuit Traces (Behind/Inside) */}
-      <g stroke={secondaryColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        {/* Top Trace */}
-        <path d="M50 42 V 30" />
-        <circle cx="50" cy="28" r="2.5" fill={secondaryColor} stroke="none" />
-        
-        {/* Bottom Left Trace */}
-        <path d="M42 58 L 30 72" />
-        <circle cx="28" cy="74" r="2.5" fill={secondaryColor} stroke="none" />
-        <path d="M30 72 H 20" />
-        <circle cx="18" cy="72" r="2" fill={secondaryColor} stroke="none" />
+      {/* Circuit Traces (Nodes) */}
+      <g stroke={secondaryColor} strokeWidth="3" strokeLinecap="round">
+         {/* Top Left */}
+         <line x1="34" y1="34" x2="22" y2="22" />
+         <circle cx="22" cy="22" r="3.5" fill={secondaryColor} stroke="none" />
+         
+         {/* Left */}
+         <line x1="32" y1="50" x2="15" y2="50" />
+         <circle cx="15" cy="50" r="3.5" fill={secondaryColor} stroke="none" />
 
-        {/* Bottom Right Trace */}
-        <path d="M58 58 L 70 72" />
-        <circle cx="72" cy="74" r="2.5" fill={secondaryColor} stroke="none" />
-        <path d="M70 72 H 80" />
-        <circle cx="82" cy="72" r="2" fill={secondaryColor} stroke="none" />
+         {/* Bottom Left */}
+         <line x1="34" y1="66" x2="22" y2="78" />
+         <circle cx="22" cy="78" r="3.5" fill={secondaryColor} stroke="none" />
 
-        {/* Side Traces */}
-        <path d="M42 50 H 32 L 28 45" />
-        <circle cx="28" cy="45" r="2" fill={secondaryColor} stroke="none" />
+         {/* Top */}
+         <line x1="50" y1="32" x2="50" y2="15" />
+         <circle cx="50" cy="15" r="3.5" fill={secondaryColor} stroke="none" />
+         
+         {/* Top Right */}
+         <line x1="66" y1="34" x2="78" y2="22" />
+         <circle cx="78" cy="22" r="3.5" fill={secondaryColor} stroke="none" />
 
-        <path d="M58 50 H 68 L 72 45" />
-        <circle cx="72" cy="45" r="2" fill={secondaryColor} stroke="none" />
+         {/* Bottom */}
+         <line x1="50" y1="68" x2="50" y2="85" />
+         <circle cx="50" cy="85" r="3.5" fill={secondaryColor} stroke="none" />
+
+         {/* Bottom Right */}
+         <line x1="66" y1="66" x2="78" y2="78" />
+         <circle cx="78" cy="78" r="3.5" fill={secondaryColor} stroke="none" />
       </g>
 
-      {/* Central Chip */}
-      <rect 
-        x="40" y="42" 
-        width="20" height="20" 
-        rx="2" 
-        stroke={secondaryColor} 
-        strokeWidth="4" 
-        fill="none" 
-      />
-      <rect x="45" y="47" width="10" height="10" fill={secondaryColor} stroke="none" opacity="0.5" />
+      {/* Chip Pins */}
+      <g stroke={primaryColor} strokeWidth="4" strokeLinecap="round">
+        {/* N */}
+        <line x1="41" y1="32" x2="41" y2="28" />
+        <line x1="50" y1="32" x2="50" y2="28" />
+        <line x1="59" y1="32" x2="59" y2="28" />
+        {/* S */}
+        <line x1="41" y1="68" x2="41" y2="72" />
+        <line x1="50" y1="68" x2="50" y2="72" />
+        <line x1="59" y1="68" x2="59" y2="72" />
+        {/* W */}
+        <line x1="32" y1="41" x2="28" y2="41" />
+        <line x1="32" y1="50" x2="28" y2="50" />
+        <line x1="32" y1="59" x2="28" y2="59" />
+      </g>
 
-      {/* Flask Outline */}
-      <path 
-        d="M38 25 V 15 H 62 V 25 L 82 82 C 84 88 80 95 72 95 H 28 C 20 95 16 88 18 82 L 38 25 Z" 
-        stroke={primaryColor} 
-        strokeWidth="5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
+      {/* Chip Body */}
+      <rect 
+        x="32" y="32" 
+        width="36" height="36" 
+        rx="6" 
+        fill={primaryColor} 
       />
       
-      {/* Flask Rim */}
-      <path d="M35 15 H 65" stroke={primaryColor} strokeWidth="5" strokeLinecap="round" />
+      {/* Inner Chip Square */}
+      <rect 
+        x="41" y="41" 
+        width="18" height="18" 
+        rx="3" 
+        fill="white" 
+        fillOpacity="0.25"
+      />
+
+      {/* Wifi Signals (East) */}
+      <path 
+        d="M 76 42 A 12 12 0 0 1 76 58" 
+        stroke={primaryColor} 
+        strokeWidth="4" 
+        strokeLinecap="round" 
+        fill="none" 
+      />
+      <path 
+        d="M 83 35 A 22 22 0 0 1 83 65" 
+        stroke={primaryColor} 
+        strokeWidth="4" 
+        strokeLinecap="round" 
+        fill="none" 
+      />
     </svg>
   );
 };
