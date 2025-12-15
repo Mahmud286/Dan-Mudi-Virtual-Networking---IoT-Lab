@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NetworkCanvas } from './components/NetworkCanvas';
 import { Terminal } from './components/Terminal';
 import { ConfigurationModal } from './components/ConfigurationModal';
+import { SharingModal } from './components/SharingModal';
 import { TutorChat } from './components/TutorChat';
 import { HomePage } from './components/HomePage';
 import { ProjectDashboard } from './components/ProjectDashboard';
@@ -13,7 +14,8 @@ import {
   Monitor, Router, Network, Cable, Play, Layout, Cpu, Wifi, 
   Thermometer, Lightbulb, Box, Laptop, Server, Shield, Cloud, 
   Smartphone, ToggleLeft, Wind, Droplets, Bell, Settings2, Eye,
-  Radio, Sparkles, X, ArrowLeft, Code, Eye as EyeIcon
+  Radio, Sparkles, X, ArrowLeft, Code, Eye as EyeIcon, Save, Upload,
+  Eraser, MousePointer2, Share2, Printer
 } from 'lucide-react';
 
 const generateId = (prefix: string) => `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
@@ -24,8 +26,10 @@ export default function App() {
   const [links, setLinks] = useState<Link[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined);
   const [configuringDeviceId, setConfiguringDeviceId] = useState<string | null>(null);
+  const [showSharingModal, setShowSharingModal] = useState(false);
   
-  const [connectingMode, setConnectingMode] = useState(false);
+  // Tool Mode: 'cursor' (Select/Move), 'connect' (Cable), 'erase' (Delete)
+  const [toolMode, setToolMode] = useState<'cursor' | 'connect' | 'erase'>('cursor');
   const [selectedCableType, setSelectedCableType] = useState<CableType>(CableType.STRAIGHT);
   
   const [activeTab, setActiveTab] = useState<'net' | 'iot'>('net');
@@ -108,6 +112,17 @@ export default function App() {
     if (configuringDeviceId === id) setConfiguringDeviceId(null);
   };
 
+  const handleDeleteLink = (id: string) => {
+    setLinks(links.filter(l => l.id !== id));
+  };
+
+  const handleClearCanvas = () => {
+      if (window.confirm("Are you sure you want to clear the entire workspace?")) {
+          setDevices([]);
+          setLinks([]);
+      }
+  };
+
   const handleMoveDevice = (id: string, x: number, y: number) => {
     setDevices(devices.map(d => d.id === id ? { ...d, x, y } : d));
   };
@@ -131,13 +146,77 @@ export default function App() {
     }
   };
 
-  const toggleConnectionMode = () => {
-    setConnectingMode(!connectingMode);
-  };
-
   const toggleSimulation = () => {
     setSimulationRunning(!simulationRunning);
     // In a real app, this would start/stop the loop
+  };
+  
+  // Real-time update loop simulation
+  useEffect(() => {
+    if (!simulationRunning) return;
+
+    const interval = setInterval(() => {
+        setDevices(currentDevices => 
+            currentDevices.map(d => {
+                // Fluctuate sensors slightly to show activity
+                if (d.type.startsWith('SENSOR')) {
+                    const noise = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+                    const current = d.sensorValue ?? 0;
+                    return { ...d, sensorValue: Math.max(0, Math.min(100, current + noise)) };
+                }
+                return d;
+            })
+        );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [simulationRunning]);
+
+  const handleSaveProject = () => {
+    const projectData = {
+        version: '2.0',
+        timestamp: new Date().toISOString(),
+        type: 'danmudi-lab-project',
+        activeTab,
+        devices,
+        links
+    };
+    
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `danmudi-project-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const json = JSON.parse(event.target?.result as string);
+            if (json.devices && Array.isArray(json.devices)) {
+                setDevices(json.devices);
+                setLinks(json.links || []);
+                if (json.activeTab) setActiveTab(json.activeTab);
+                setSimulationRunning(false);
+            } else {
+                alert("Invalid project file structure.");
+            }
+        } catch (error) {
+            console.error("Error loading file:", error);
+            alert("Failed to parse project file.");
+        }
+    };
+    reader.readAsText(file);
+    // Reset to allow loading same file again
+    e.target.value = '';
   };
 
   const getNetworkContext = () => {
@@ -216,6 +295,7 @@ export default function App() {
                  <button onClick={() => handleAddDevice(DeviceType.LAPTOP)} className="btn-tool" title="Laptop"><Laptop size={18} /></button>
                  <button onClick={() => handleAddDevice(DeviceType.ROUTER)} className="btn-tool" title="Router"><Router size={18} /></button>
                  <button onClick={() => handleAddDevice(DeviceType.SWITCH)} className="btn-tool" title="Switch"><Network size={18} /></button>
+                 <button onClick={() => handleAddDevice(DeviceType.PRINTER)} className="btn-tool" title="Printer"><Printer size={18} /></button>
                </>
              ) : (
                <>
@@ -246,20 +326,39 @@ export default function App() {
              </div>
            </div>
 
-           {/* Cable Tools */}
-           <div className="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700 shrink-0 ml-2 md:ml-4">
+           {/* Tool Modes */}
+           <div className="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700 shrink-0 ml-2 md:ml-4 gap-1">
              <button 
-               onClick={toggleConnectionMode}
-               className={`p-1.5 rounded transition-colors flex items-center gap-2 mr-2 ${connectingMode ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-700 text-slate-300'}`} 
+               onClick={() => setToolMode('cursor')}
+               className={`p-1.5 rounded transition-colors ${toolMode === 'cursor' ? 'bg-slate-600 text-white shadow' : 'hover:bg-slate-700 text-slate-300'}`} 
+               title="Select / Move"
+             >
+               <MousePointer2 size={18} />
+             </button>
+             <button 
+               onClick={() => setToolMode('connect')}
+               className={`p-1.5 rounded transition-colors ${toolMode === 'connect' ? 'bg-blue-600 text-white shadow' : 'hover:bg-slate-700 text-slate-300'}`} 
                title="Connection Mode"
              >
                <Cable size={18} />
              </button>
+             <button 
+               onClick={() => setToolMode('erase')}
+               className={`p-1.5 rounded transition-colors ${toolMode === 'erase' ? 'bg-red-600 text-white shadow' : 'hover:bg-slate-700 text-slate-300'}`} 
+               title="Eraser Tool"
+             >
+               <Eraser size={18} />
+             </button>
              
+             <div className="w-px h-6 bg-slate-700 mx-1"></div>
+
              <select 
                value={selectedCableType}
-               onChange={(e) => setSelectedCableType(e.target.value as CableType)}
-               className={`bg-slate-900 border text-xs h-8 rounded px-2 outline-none cursor-pointer font-mono max-w-[80px] md:max-w-none ${connectingMode ? 'border-blue-500 text-white' : 'border-slate-600 text-slate-400'}`}
+               onChange={(e) => {
+                 setSelectedCableType(e.target.value as CableType);
+                 setToolMode('connect');
+               }}
+               className={`bg-slate-900 border text-xs h-8 rounded px-2 outline-none cursor-pointer font-mono max-w-[80px] md:max-w-none ${toolMode === 'connect' ? 'border-blue-500 text-white' : 'border-slate-600 text-slate-400'}`}
              >
                <option value={CableType.STRAIGHT}>Straight</option>
                <option value={CableType.CROSSOVER}>Cross</option>
@@ -270,6 +369,26 @@ export default function App() {
         </div>
 
         <div className="flex items-center space-x-2">
+            
+            {/* Save / Load Controls */}
+            <div className="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700 mr-1 sm:mr-2">
+                <label className="p-1.5 hover:bg-slate-700 rounded text-slate-300 hover:text-white transition-colors cursor-pointer" title="Load Project">
+                    <Upload size={18} />
+                    <input type="file" accept=".json" onChange={handleLoadProject} className="hidden" />
+                </label>
+                <button onClick={handleSaveProject} className="p-1.5 hover:bg-slate-700 rounded text-slate-300 hover:text-white transition-colors" title="Save Project">
+                    <Save size={18} />
+                </button>
+                <div className="w-px h-5 bg-slate-700 mx-1"></div>
+                <button 
+                    onClick={() => setShowSharingModal(true)}
+                    className="p-1.5 hover:bg-indigo-600 hover:text-white rounded text-indigo-400 transition-colors"
+                    title="File & Message Sharing"
+                >
+                    <Share2 size={18} />
+                </button>
+            </div>
+
             <button 
                 className="lg:hidden p-2 text-purple-400 hover:bg-slate-800 rounded-lg"
                 onClick={() => setShowMobileSidebar(true)}
@@ -320,7 +439,10 @@ export default function App() {
                   onDeviceDoubleClick={(d) => setConfiguringDeviceId(d.id)}
                   onConnect={handleConnect}
                   onDeleteDevice={handleDeleteDevice}
-                  connectingMode={connectingMode}
+                  onDeleteLink={handleDeleteLink}
+                  onClearCanvas={handleClearCanvas}
+                  onAddDevice={handleAddDevice}
+                  toolMode={toolMode}
                   selectedCableType={selectedCableType}
                   selectedDeviceId={selectedDeviceId}
                   isSimulationRunning={simulationRunning}
@@ -364,6 +486,14 @@ export default function App() {
           onUpdateDevice={handleUpdateDevice}
           onDeleteDevice={handleDeleteDevice}
           onClose={() => setConfiguringDeviceId(null)}
+        />
+      )}
+
+      {/* Global Sharing Modal */}
+      {showSharingModal && (
+        <SharingModal 
+          devices={devices} 
+          onClose={() => setShowSharingModal(false)} 
         />
       )}
 

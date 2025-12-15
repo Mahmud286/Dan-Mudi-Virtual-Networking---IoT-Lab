@@ -6,6 +6,7 @@ export enum DeviceType {
   SWITCH = 'SWITCH',
   FIREWALL = 'FIREWALL',
   ACCESS_POINT = 'ACCESS_POINT',
+  PRINTER = 'PRINTER',
   CLOUD = 'CLOUD',
   
   // IoT Types

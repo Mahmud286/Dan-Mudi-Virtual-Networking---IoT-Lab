@@ -96,7 +96,10 @@ export const simulateNetworkCommand = async (
   try {
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_FLASH,
-      contents: prompt,
+      contents: {
+        role: 'user',
+        parts: [{ text: prompt }]
+      },
     });
     return response.text || "No output returned.";
   } catch (error) {
@@ -126,13 +129,16 @@ export const getTutorResponse = async (
   Keep answers concise and educational.
   ${context ? `Current Lab Context: ${context}` : ''}`;
 
+  // Map 'system' role (used for bot in UI) to 'model' for Gemini API
+  const history = messages.map(m => ({
+    role: m.role === 'system' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+
   try {
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_PRO,
-      contents: messages.map(m => ({
-        role: m.role,
-        parts: [{ text: m.content }]
-      })),
+      contents: history,
       config: {
         systemInstruction: systemInstruction,
       }

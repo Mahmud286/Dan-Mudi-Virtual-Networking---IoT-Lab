@@ -1,11 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Device, Link as NetworkLink, DeviceType, CableType } from '../types';
-import { CABLE_STYLES } from '../constants';
+import { CABLE_STYLES, DEVICE_ICONS } from '../constants';
 import { 
   Monitor, Router, Server, Network, Laptop, X, Cpu, Wifi, 
   Thermometer, Droplets, Eye, Lightbulb, Fan, Shield, Cloud, 
   Radio, Smartphone, ToggleLeft, Wind, Bell, Settings2, Box,
-  Play, Pause, Plus, MoreVertical
+  Play, Pause, Plus, MoreVertical, Trash2, Printer
 } from 'lucide-react';
 
 interface NetworkCanvasProps {
@@ -16,7 +16,10 @@ interface NetworkCanvasProps {
   onDeviceDoubleClick: (device: Device) => void;
   onConnect: (sourceId: string, targetId: string) => void;
   onDeleteDevice: (id: string) => void;
-  connectingMode: boolean;
+  onDeleteLink: (id: string) => void;
+  onClearCanvas: () => void;
+  onAddDevice: (type: DeviceType) => void;
+  toolMode: 'cursor' | 'connect' | 'erase';
   selectedCableType: CableType;
   selectedDeviceId?: string;
   isSimulationRunning?: boolean;
@@ -88,6 +91,7 @@ const DeviceIconComponent = ({ type, className, style }: { type: string; classNa
     case DeviceType.SWITCH: return <Network className={className} style={style} />;
     case DeviceType.FIREWALL: return <Shield className={className} style={style} />;
     case DeviceType.ACCESS_POINT: return <Radio className={className} style={style} />;
+    case DeviceType.PRINTER: return <Printer className={className} style={style} />;
     case DeviceType.CLOUD: return <Cloud className={className} style={style} />;
     
     // IoT Controllers
@@ -121,6 +125,7 @@ const getDeviceColor = (type: string, isSelected: boolean) => {
   if (type === DeviceType.ARDUINO || type === DeviceType.RASPBERRY_PI) return 'bg-teal-900 hover:bg-teal-800 border-teal-700';
   if (type === DeviceType.FIREWALL) return 'bg-red-900 hover:bg-red-800 border-red-700';
   if (type === DeviceType.CLOUD) return 'bg-sky-900 hover:bg-sky-800 border-sky-700';
+  if (type === DeviceType.PRINTER) return 'bg-indigo-900 hover:bg-indigo-800 border-indigo-700';
   
   return 'bg-slate-800 hover:bg-slate-700 border-slate-600'; // Default Network
 };
@@ -133,7 +138,10 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
   onDeviceDoubleClick,
   onConnect,
   onDeleteDevice,
-  connectingMode,
+  onDeleteLink,
+  onClearCanvas,
+  onAddDevice,
+  toolMode,
   selectedCableType,
   selectedDeviceId,
   isSimulationRunning = false,
@@ -142,27 +150,45 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [tempConnection, setTempConnection] = useState<{ sourceId: string; endX: number; endY: number } | null>(null);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+        setShowAddMenu(false);
+        setShowOptionsMenu(false);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Use Pointer Events for unified Mouse/Touch handling
   const handlePointerDown = (e: React.PointerEvent, device: Device) => {
     e.stopPropagation();
     e.currentTarget.releasePointerCapture(e.pointerId);
 
+    // ERASER TOOL LOGIC
+    if (toolMode === 'erase') {
+        onDeleteDevice(device.id);
+        return;
+    }
+
     if (canvasRef.current) {
         const rect = canvasRef.current.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
-        // Connection Mode: Start dragging a cable
-        if (connectingMode) {
+        // CONNECT TOOL LOGIC
+        if (toolMode === 'connect') {
             setTempConnection({
                 sourceId: device.id,
                 endX: device.x + (device.type === DeviceType.ESP32 ? 60 : 32),
                 endY: device.y + (device.type === DeviceType.ESP32 ? 100 : 32)
             });
         } else {
-            // Normal Mode: Move device - Calculate offset relative to canvas coordinate system
+            // MOVE TOOL LOGIC
             setDraggingId(device.id);
             setDragOffset({
                 x: mouseX - device.x,
@@ -218,10 +244,19 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     return { x: d.x + 32, y: d.y + 32 }; 
   };
 
+  const quickAddOptions = [
+      { type: DeviceType.ESP32, label: 'ESP32', icon: <Wifi size={14} /> },
+      { type: DeviceType.ARDUINO, label: 'Arduino', icon: <Cpu size={14} /> },
+      { type: DeviceType.ACTUATOR_LED, label: 'LED', icon: <Lightbulb size={14} /> },
+      { type: DeviceType.SENSOR_TEMP, label: 'DHT Sensor', icon: <Thermometer size={14} /> },
+      { type: DeviceType.PC, label: 'PC', icon: <Monitor size={14} /> },
+      { type: DeviceType.SWITCH, label: 'Switch', icon: <Network size={14} /> },
+  ];
+
   return (
     <div className="flex flex-col h-full bg-[#252526]">
        {/* Simulation Controls Toolbar */}
-       <div className="h-10 bg-[#333333] border-b border-black/20 flex items-center px-4 justify-between shrink-0">
+       <div className="h-10 bg-[#333333] border-b border-black/20 flex items-center px-4 justify-between shrink-0 relative z-20">
           
           {/* Simulation Label Pill */}
           <div className="bg-[#444] px-3 py-1 rounded text-[#ccc] text-xs font-semibold shadow-sm border border-[#555]">
@@ -236,19 +271,60 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             >
                 {isSimulationRunning ? <Pause size={16} className="text-white fill-current" /> : <Play size={16} className="text-white fill-current ml-0.5" />}
             </button>
-            <button className="w-8 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg transition-colors" title="Add Component">
-                <Plus size={18} />
-            </button>
-            <button className="w-8 h-8 hover:bg-white/10 text-slate-400 hover:text-white rounded-full flex items-center justify-center transition-colors">
-                <MoreVertical size={18} />
-            </button>
+            
+            {/* Add Component Menu */}
+            <div className="relative">
+                <button 
+                    onClick={(e) => { e.stopPropagation(); setShowAddMenu(!showAddMenu); setShowOptionsMenu(false); }}
+                    className="w-8 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg transition-colors" 
+                    title="Quick Add Component"
+                >
+                    <Plus size={18} />
+                </button>
+                {showAddMenu && (
+                    <div className="absolute right-0 top-10 bg-slate-800 border border-slate-700 rounded-lg shadow-xl w-48 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-2 text-xs font-bold text-slate-500 uppercase bg-slate-900/50">Quick Add</div>
+                        {quickAddOptions.map((opt, i) => (
+                            <button 
+                                key={i}
+                                onClick={() => onAddDevice(opt.type)}
+                                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-blue-600 hover:text-white flex items-center gap-2"
+                            >
+                                {opt.icon}
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Options Menu */}
+            <div className="relative">
+                <button 
+                    onClick={(e) => { e.stopPropagation(); setShowOptionsMenu(!showOptionsMenu); setShowAddMenu(false); }}
+                    className="w-8 h-8 hover:bg-white/10 text-slate-400 hover:text-white rounded-full flex items-center justify-center transition-colors"
+                >
+                    <MoreVertical size={18} />
+                </button>
+                {showOptionsMenu && (
+                    <div className="absolute right-0 top-10 bg-slate-800 border border-slate-700 rounded-lg shadow-xl w-40 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <button 
+                            onClick={onClearCanvas}
+                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-900/50 flex items-center gap-2"
+                        >
+                            <Trash2 size={14} />
+                            Clear Canvas
+                        </button>
+                    </div>
+                )}
+            </div>
           </div>
        </div>
 
        {/* Canvas */}
        <div 
         ref={canvasRef}
-        className={`relative flex-1 bg-[#1e1e1e] overflow-hidden ${connectingMode ? 'cursor-crosshair' : 'cursor-default'}`}
+        className={`relative flex-1 bg-[#1e1e1e] overflow-hidden ${toolMode === 'connect' ? 'cursor-crosshair' : toolMode === 'erase' ? 'cursor-not-allowed' : 'cursor-default'}`}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUpCanvas}
         onPointerLeave={handlePointerUpCanvas}
@@ -264,17 +340,34 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             const start = getCenter(link.sourceId);
             const end = getCenter(link.targetId);
             const style = CABLE_STYLES[link.type] || CABLE_STYLES[CableType.STRAIGHT];
+            const isEraseMode = toolMode === 'erase';
             
             return (
-                <g key={link.id}>
-                {/* Background stroke for easier visibility */}
+                <g 
+                    key={link.id}
+                    onPointerDown={(e) => {
+                        if (isEraseMode) {
+                            e.stopPropagation();
+                            onDeleteLink(link.id);
+                        }
+                    }}
+                    style={{ 
+                        pointerEvents: isEraseMode ? 'all' : 'none', // Capture clicks ONLY when erasing
+                        cursor: isEraseMode ? 'pointer' : 'default' 
+                    }}
+                    className={isEraseMode ? "hover:opacity-50" : ""}
+                >
+                {/* Hit area - invisible wider stroke for easier clicking */}
+                <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="transparent" strokeWidth="20" />
+                
+                {/* Visual Lines */}
                 <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#000" strokeWidth={style.width + 3} strokeOpacity="0.5" />
                 <line
                     x1={start.x}
                     y1={start.y}
                     x2={end.x}
                     y2={end.y}
-                    stroke={style.color}
+                    stroke={isEraseMode ? "#ef4444" : style.color} // Turn red when erasing to indicate target
                     strokeWidth={style.width}
                     strokeDasharray={style.dash}
                 />
@@ -323,11 +416,11 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             return (
             <div
                 key={device.id}
-                className={`absolute flex flex-col items-center group select-none z-10 ${isESP32 ? 'w-[120px] h-[200px]' : 'w-16 h-16'}`}
+                className={`absolute flex flex-col items-center group select-none z-10 ${isESP32 ? 'w-[120px] h-[200px]' : 'w-16 h-16'} ${toolMode === 'erase' ? 'hover:opacity-50 hover:scale-95' : ''}`}
                 style={{ 
                 left: device.x, 
                 top: device.y,
-                transition: draggingId === device.id ? 'none' : 'box-shadow 0.2s',
+                transition: draggingId === device.id ? 'none' : 'box-shadow 0.2s, transform 0.1s',
                 touchAction: 'none'
                 }}
                 onPointerDown={(e) => handlePointerDown(e, device)}
@@ -339,6 +432,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
                 className={`
                     w-full h-full rounded-lg flex items-center justify-center transition-colors
                     ${colorClass}
+                    ${toolMode === 'erase' ? 'ring-2 ring-red-500 cursor-not-allowed' : ''}
                 `}
                 style={customStyle}
                 >
@@ -362,25 +456,34 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
                     {device.sensorValue ?? 0}
                 </div>
                 )}
-
-                <button
-                className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteDevice(device.id);
-                }}
-                onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
-                onDoubleClick={(e) => e.stopPropagation()} // Prevent modal open on delete
-                >
-                <X size={12} className="text-white" />
-                </button>
+                
+                {/* Quick Delete Hover (Only in Cursor Mode) */}
+                {toolMode === 'cursor' && (
+                    <button
+                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteDevice(device.id);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
+                    onDoubleClick={(e) => e.stopPropagation()} // Prevent modal open on delete
+                    >
+                    <X size={12} className="text-white" />
+                    </button>
+                )}
             </div>
             );
         })}
 
-        {connectingMode && !tempConnection && (
+        {toolMode === 'connect' && !tempConnection && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-blue-600/90 text-white px-4 py-2 rounded-full text-xs font-medium border border-blue-500 pointer-events-none shadow-lg animate-fade-in z-30">
             Drag from one device to another to connect
+            </div>
+        )}
+        
+        {toolMode === 'erase' && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white px-4 py-2 rounded-full text-xs font-medium border border-red-500 pointer-events-none shadow-lg animate-fade-in z-30">
+            Click on any device or cable to remove it
             </div>
         )}
         </div>
