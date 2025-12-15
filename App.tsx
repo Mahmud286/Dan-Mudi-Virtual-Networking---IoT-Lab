@@ -3,19 +3,20 @@ import { NetworkCanvas } from './components/NetworkCanvas';
 import { Terminal } from './components/Terminal';
 import { ConfigurationModal } from './components/ConfigurationModal';
 import { SharingModal } from './components/SharingModal';
+import { PortConnectionModal } from './components/PortConnectionModal';
 import { TutorChat } from './components/TutorChat';
 import { HomePage } from './components/HomePage';
 import { ProjectDashboard } from './components/ProjectDashboard';
 import { CodeEditor } from './components/CodeEditor';
 import { Logo } from './components/Logo';
-import { Device, Link, DeviceType, CableType } from './types';
+import { Device, Link, DeviceType, CableType, NetworkInterface } from './types';
 import { INITIAL_CHALLENGES, DEFAULT_ARDUINO_CODE } from './constants';
 import { 
   Monitor, Router, Network, Cable, Play, Layout, Cpu, Wifi, 
   Thermometer, Lightbulb, Box, Laptop, Server, Shield, Cloud, 
   Smartphone, ToggleLeft, Wind, Droplets, Bell, Settings2, Eye,
   Radio, Sparkles, X, ArrowLeft, Code, Eye as EyeIcon, Save, Upload,
-  Eraser, MousePointer2, Share2, Printer
+  Eraser, MousePointer2, Share2, Printer, ChevronDown
 } from 'lucide-react';
 
 const generateId = (prefix: string) => `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
@@ -27,6 +28,8 @@ export default function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined);
   const [configuringDeviceId, setConfiguringDeviceId] = useState<string | null>(null);
   const [showSharingModal, setShowSharingModal] = useState(false);
+  const [pendingLink, setPendingLink] = useState<{sourceId: string, targetId: string} | null>(null);
+  const [showSwitchMenu, setShowSwitchMenu] = useState(false);
   
   // Tool Mode: 'cursor' (Select/Move), 'connect' (Cable), 'erase' (Delete)
   const [toolMode, setToolMode] = useState<'cursor' | 'connect' | 'erase'>('cursor');
@@ -73,7 +76,7 @@ export default function App() {
     setView('lab');
   };
 
-  const handleAddDevice = (type: DeviceType) => {
+  const handleAddDevice = (type: DeviceType, config?: { name: string, interfaces?: NetworkInterface[] }) => {
     // Explicit IoT check based on enum naming convention or list
     const isIoTDevice = [
         DeviceType.ARDUINO, DeviceType.ESP32, DeviceType.RASPBERRY_PI, DeviceType.GSM_MODULE,
@@ -81,16 +84,18 @@ export default function App() {
         DeviceType.ACTUATOR_LED, DeviceType.ACTUATOR_MOTOR, DeviceType.ACTUATOR_BUZZER, DeviceType.ACTUATOR_SERVO, DeviceType.RELAY
     ].includes(type);
 
+    const defaultInterfaces: NetworkInterface[] = type === DeviceType.SWITCH ? [] : [
+      { id: generateId('if'), name: 'eth0', ip: '', subnet: '', gateway: '' }
+    ];
+
     const newDevice: Device = {
       id: generateId(isIoTDevice ? 'iot' : 'dev'),
       type,
-      name: `${type}-${devices.filter(d => d.type === type).length + 1}`,
+      name: config?.name || `${type}-${devices.filter(d => d.type === type).length + 1}`,
       x: 100 + Math.random() * 50,
       y: 100 + Math.random() * 50,
       status: 'online',
-      interfaces: type === DeviceType.SWITCH ? [] : [
-        { id: generateId('if'), name: 'eth0', ip: '', subnet: '', gateway: '' }
-      ],
+      interfaces: config?.interfaces || defaultInterfaces,
       // IoT defaults
       color: type === DeviceType.ACTUATOR_LED ? '#ef4444' : undefined, // Default Red for LED
       code: (type === DeviceType.ARDUINO || type === DeviceType.ESP32 || type === DeviceType.RASPBERRY_PI) ? DEFAULT_ARDUINO_CODE : undefined,
@@ -99,6 +104,24 @@ export default function App() {
     };
     setDevices([...devices, newDevice]);
     setSelectedDeviceId(newDevice.id);
+  };
+
+  const handleAddSwitch = (ports: number) => {
+    const interfaces: NetworkInterface[] = [];
+    for (let i = 1; i <= ports; i++) {
+        interfaces.push({
+            id: generateId('if'),
+            name: `FastEthernet0/${i}`,
+            ip: '',
+            subnet: '',
+            gateway: ''
+        });
+    }
+    handleAddDevice(DeviceType.SWITCH, { 
+        name: `Switch-${ports}Port`, 
+        interfaces 
+    });
+    setShowSwitchMenu(false);
   };
 
   const handleUpdateDevice = (updated: Device) => {
@@ -114,6 +137,24 @@ export default function App() {
 
   const handleDeleteLink = (id: string) => {
     setLinks(links.filter(l => l.id !== id));
+    // Also clear the interface connections
+    setDevices(prev => prev.map(d => ({
+       ...d,
+       interfaces: d.interfaces.map(iface => {
+          if (iface.connectedToId) { // Simplified check, ideally check link ID match
+              // Since we don't store link ID in interface currently, we might clear if we knew the peer.
+              // For robustness, in a real app, links should be cross-referenced properly.
+              // Here we just remove the visual link. 
+              // To properly disconnect interface:
+              // We need to find which devices were connected by this link.
+              const link = links.find(l => l.id === id);
+              if (link && (d.id === link.sourceId || d.id === link.targetId)) {
+                   return { ...iface, connectedToId: undefined };
+              }
+          }
+          return iface;
+       })
+    })));
   };
 
   const handleClearCanvas = () => {
@@ -127,7 +168,7 @@ export default function App() {
     setDevices(devices.map(d => d.id === id ? { ...d, x, y } : d));
   };
 
-  const handleConnect = (sourceId: string, targetId: string) => {
+  const handleConnectRequest = (sourceId: string, targetId: string) => {
     // Prevent self connection
     if (sourceId === targetId) return;
 
@@ -137,30 +178,59 @@ export default function App() {
     );
     
     if (!exists) {
-      setLinks([...links, { 
+      setPendingLink({ sourceId, targetId });
+    }
+  };
+
+  const handleConfirmConnection = (sourceIfId: string, targetIfId: string) => {
+    if (!pendingLink) return;
+
+    const { sourceId, targetId } = pendingLink;
+
+    // Create the visual link
+    const newLink: Link = { 
         id: generateId('link'), 
         sourceId, 
         targetId, 
         type: selectedCableType
-      }]);
-    }
+    };
+    setLinks([...links, newLink]);
+
+    // Update devices to reflect connected interfaces
+    setDevices(prevDevices => prevDevices.map(d => {
+        if (d.id === sourceId) {
+            return {
+                ...d,
+                interfaces: d.interfaces.map(iface => 
+                    iface.id === sourceIfId ? { ...iface, connectedToId: targetId } : iface
+                )
+            };
+        }
+        if (d.id === targetId) {
+            return {
+                ...d,
+                interfaces: d.interfaces.map(iface => 
+                    iface.id === targetIfId ? { ...iface, connectedToId: sourceId } : iface
+                )
+            };
+        }
+        return d;
+    }));
+
+    setPendingLink(null);
   };
 
   const toggleSimulation = () => {
     setSimulationRunning(!simulationRunning);
-    // In a real app, this would start/stop the loop
   };
   
-  // Real-time update loop simulation
   useEffect(() => {
     if (!simulationRunning) return;
-
     const interval = setInterval(() => {
         setDevices(currentDevices => 
             currentDevices.map(d => {
-                // Fluctuate sensors slightly to show activity
                 if (d.type.startsWith('SENSOR')) {
-                    const noise = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+                    const noise = Math.floor(Math.random() * 3) - 1; 
                     const current = d.sensorValue ?? 0;
                     return { ...d, sensorValue: Math.max(0, Math.min(100, current + noise)) };
                 }
@@ -168,7 +238,6 @@ export default function App() {
             })
         );
     }, 1000);
-
     return () => clearInterval(interval);
   }, [simulationRunning]);
 
@@ -181,7 +250,6 @@ export default function App() {
         devices,
         links
     };
-    
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -215,7 +283,6 @@ export default function App() {
         }
     };
     reader.readAsText(file);
-    // Reset to allow loading same file again
     e.target.value = '';
   };
 
@@ -226,7 +293,6 @@ export default function App() {
       const config = d.interfaces.map(i => `${i.name}: ${i.ip}`).join(', ');
       return `${d.name} (${d.type}) [${config}]`;
     }).join('\n');
-    
     return `Topology Devices:\n${deviceList}\nTotal Links: ${links.length}`;
   };
 
@@ -271,30 +337,41 @@ export default function App() {
            {/* Mobile IoT View Toggle */}
            {activeTab === 'iot' && (
               <div className="md:hidden flex bg-slate-800 p-1 rounded-lg border border-slate-700 mr-2 shrink-0">
-                  <button 
-                    onClick={() => setMobileIoTView('editor')}
-                    className={`p-1.5 rounded transition-colors ${mobileIoTView === 'editor' ? 'bg-slate-600 text-white' : 'text-slate-400'}`}
-                    title="Code Editor"
-                  >
+                  <button onClick={() => setMobileIoTView('editor')} className={`p-1.5 rounded transition-colors ${mobileIoTView === 'editor' ? 'bg-slate-600 text-white' : 'text-slate-400'}`} title="Code Editor">
                     <Code size={16} />
                   </button>
-                  <button 
-                    onClick={() => setMobileIoTView('canvas')}
-                    className={`p-1.5 rounded transition-colors ${mobileIoTView === 'canvas' ? 'bg-slate-600 text-white' : 'text-slate-400'}`}
-                    title="Simulation Canvas"
-                  >
+                  <button onClick={() => setMobileIoTView('canvas')} className={`p-1.5 rounded transition-colors ${mobileIoTView === 'canvas' ? 'bg-slate-600 text-white' : 'text-slate-400'}`} title="Simulation Canvas">
                     <EyeIcon size={16} />
                   </button>
               </div>
            )}
 
-           <div className="flex items-center bg-slate-800/50 p-1 rounded-lg border border-slate-700 space-x-1 shrink-0">
+           <div className="flex items-center bg-slate-800/50 p-1 rounded-lg border border-slate-700 space-x-1 shrink-0 z-20 overflow-visible">
              {activeTab === 'net' ? (
                <>
                  <button onClick={() => handleAddDevice(DeviceType.PC)} className="btn-tool" title="PC"><Monitor size={18} /></button>
                  <button onClick={() => handleAddDevice(DeviceType.LAPTOP)} className="btn-tool" title="Laptop"><Laptop size={18} /></button>
                  <button onClick={() => handleAddDevice(DeviceType.ROUTER)} className="btn-tool" title="Router"><Router size={18} /></button>
-                 <button onClick={() => handleAddDevice(DeviceType.SWITCH)} className="btn-tool" title="Switch"><Network size={18} /></button>
+                 
+                 {/* Switch Dropdown */}
+                 <div className="relative">
+                    <button onClick={() => setShowSwitchMenu(!showSwitchMenu)} className="btn-tool flex items-center gap-0.5" title="Switches">
+                       <Network size={18} />
+                       <ChevronDown size={10} />
+                    </button>
+                    {showSwitchMenu && (
+                        <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowSwitchMenu(false)}></div>
+                        <div className="absolute top-full left-0 mt-2 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-40 overflow-hidden flex flex-col py-1">
+                             <button onClick={() => handleAddSwitch(8)} className="px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">8-Port Switch</button>
+                             <button onClick={() => handleAddSwitch(16)} className="px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">16-Port Switch</button>
+                             <button onClick={() => handleAddSwitch(24)} className="px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">24-Port Switch</button>
+                             <button onClick={() => handleAddSwitch(48)} className="px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">48-Port Switch</button>
+                        </div>
+                        </>
+                    )}
+                 </div>
+
                  <button onClick={() => handleAddDevice(DeviceType.PRINTER)} className="btn-tool" title="Printer"><Printer size={18} /></button>
                </>
              ) : (
@@ -402,11 +479,8 @@ export default function App() {
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
-        
-        {/* Main Content Area (Split View for IoT) */}
         <div className="flex-1 flex flex-row min-w-0 relative">
           
-          {/* Code Editor Panel - Only visible if IoT Project */}
           {showCodeEditor && editorDevice && (
               <div className={`
                 ${mobileIoTView === 'editor' ? 'w-full block' : 'hidden'} 
@@ -424,8 +498,6 @@ export default function App() {
               </div>
           )}
 
-          {/* Canvas & Terminal - Right side */}
-          {/* If IoT code editor is showing, check mobile view mode */}
           <div className={`
              flex-1 flex flex-col min-w-0 relative
              ${showCodeEditor && mobileIoTView === 'editor' ? 'hidden md:flex' : 'flex'}
@@ -437,7 +509,7 @@ export default function App() {
                   onMoveDevice={handleMoveDevice}
                   onSelectDevice={(d) => setSelectedDeviceId(d.id)}
                   onDeviceDoubleClick={(d) => setConfiguringDeviceId(d.id)}
-                  onConnect={handleConnect}
+                  onConnect={handleConnectRequest}
                   onDeleteDevice={handleDeleteDevice}
                   onDeleteLink={handleDeleteLink}
                   onClearCanvas={handleClearCanvas}
@@ -449,7 +521,6 @@ export default function App() {
                   onToggleSimulation={toggleSimulation}
                 />
             </div>
-            {/* Hide Terminal on mobile if we are in coding mode (technically terminal is in canvas view, so handled by parent div) */}
             <div className="shrink-0 z-10">
                 <Terminal 
                 device={selectedDevice}
@@ -460,12 +531,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right Sidebar - AI Tutor */}
         <div className={`
             fixed inset-y-0 right-0 z-50 w-80 bg-slate-900 border-l border-slate-700 shadow-2xl transition-transform duration-300 ease-in-out
             ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full'}
             lg:relative lg:translate-x-0 lg:shadow-none lg:z-auto lg:block
-            ${showCodeEditor ? 'hidden xl:block' : ''} // Hide tutor on medium screens if code editor is open to save space
+            ${showCodeEditor ? 'hidden xl:block' : ''} 
         `}>
            <div className="lg:hidden absolute top-3 right-3 z-10">
                <button onClick={() => setShowMobileSidebar(false)} className="p-1 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={16} /></button>
@@ -473,13 +543,11 @@ export default function App() {
            <TutorChat context={getNetworkContext()} />
         </div>
         
-        {/* Mobile Backdrop */}
         {showMobileSidebar && (
             <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm" onClick={() => setShowMobileSidebar(false)} />
         )}
       </div>
 
-      {/* Configuration Modal */}
       {configuringDevice && (
         <ConfigurationModal 
           device={configuringDevice}
@@ -489,13 +557,28 @@ export default function App() {
         />
       )}
 
-      {/* Global Sharing Modal */}
       {showSharingModal && (
         <SharingModal 
           devices={devices} 
           onClose={() => setShowSharingModal(false)} 
         />
       )}
+      
+      {pendingLink && (() => {
+          const source = devices.find(d => d.id === pendingLink.sourceId);
+          const target = devices.find(d => d.id === pendingLink.targetId);
+          if (source && target) {
+              return (
+                <PortConnectionModal
+                    sourceDevice={source}
+                    targetDevice={target}
+                    onConnect={handleConfirmConnection}
+                    onClose={() => setPendingLink(null)}
+                />
+              );
+          }
+          return null;
+      })()}
 
       <style>{`
         .btn-tool {

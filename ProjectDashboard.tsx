@@ -8,6 +8,15 @@ interface ProjectDashboardProps {
   onBack: () => void;
 }
 
+interface Template {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  mode: 'net' | 'iot';
+  devices: Device[];
+  links: Link[];
+}
+
 // Helper to generate board visual
 const BoardPreview: React.FC<{ type: 'arduino' | 'esp32' | 'pico' | 'network' }> = ({ type }) => {
   const colors = {
@@ -92,7 +101,7 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ onSelectTemp
     featuredRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const allTemplates = [
+  const allTemplates: Template[] = [
     {
       title: 'Arduino Blink',
       description: 'Basic LED example',

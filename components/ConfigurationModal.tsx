@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Device, DeviceType } from '../types';
-import { X, Settings, Network, Code, Sliders, Save, Trash2, Cpu } from 'lucide-react';
+import { X, Settings, Network, Code, Sliders, Save, Trash2, Cpu, Box } from 'lucide-react';
 
 interface ConfigurationModalProps {
   device: Device;
@@ -9,7 +9,7 @@ interface ConfigurationModalProps {
   onDeleteDevice: (id: string) => void;
 }
 
-type Tab = 'settings' | 'network' | 'code' | 'io';
+type Tab = 'physical' | 'settings' | 'network' | 'code' | 'io';
 
 export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({ 
   device, 
@@ -17,10 +17,10 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
   onUpdateDevice,
   onDeleteDevice 
 }) => {
-  const [activeTab, setActiveTab] = useState<Tab>('settings');
+  const [activeTab, setActiveTab] = useState<Tab>('physical');
 
   const isIoTController = device.type === DeviceType.ARDUINO || device.type === DeviceType.ESP32 || device.type === DeviceType.RASPBERRY_PI;
-  const isNetworkDevice = [DeviceType.PC, DeviceType.LAPTOP, DeviceType.SERVER, DeviceType.ROUTER].includes(device.type as DeviceType);
+  const isNetworkDevice = [DeviceType.PC, DeviceType.LAPTOP, DeviceType.SERVER, DeviceType.ROUTER, DeviceType.SWITCH].includes(device.type as DeviceType);
   const isSensorOrActuator = device.type.startsWith('SENSOR') || device.type.startsWith('ACTUATOR') || device.type === DeviceType.RELAY;
 
   const handleNameChange = (name: string) => {
@@ -61,10 +61,17 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
           {/* Sidebar Tabs */}
           <div className="w-full md:w-48 bg-slate-950 border-b md:border-b-0 md:border-r border-slate-800 flex flex-row md:flex-col p-2 gap-1 shrink-0 overflow-x-auto">
             <button 
+              onClick={() => setActiveTab('physical')}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'physical' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}
+            >
+              <Box size={16} /> Physical
+            </button>
+
+            <button 
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}
             >
-              <Settings size={16} /> General
+              <Settings size={16} /> Config
             </button>
             
             {isNetworkDevice && (
@@ -106,6 +113,58 @@ export const ConfigurationModal: React.FC<ConfigurationModalProps> = ({
           {/* Content Area */}
           <div className="flex-1 bg-slate-900 p-4 md:p-6 overflow-y-auto">
             
+            {/* TAB: PHYSICAL VIEW */}
+            {activeTab === 'physical' && (
+                <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <h3 className="text-xl font-light text-white mb-6 border-b border-slate-700 pb-2">Physical Device View</h3>
+                    
+                    <div className="bg-[#1a1a1a] p-6 rounded-lg border border-slate-800 shadow-inner">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-xs text-slate-500 font-mono uppercase">Model: {device.type}</span>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs text-green-400 font-bold">POWER ON</span>
+                            </div>
+                        </div>
+
+                        {/* Front Panel Visualization */}
+                        <div className="bg-[#0f0f0f] border-2 border-slate-700 rounded-md p-4 relative">
+                            {/* Screw holes */}
+                            <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-slate-800 border border-slate-600"></div>
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-slate-800 border border-slate-600"></div>
+                            <div className="absolute bottom-2 left-2 w-2 h-2 rounded-full bg-slate-800 border border-slate-600"></div>
+                            <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-slate-800 border border-slate-600"></div>
+
+                            {/* Ports Grid */}
+                            <div className="flex flex-wrap gap-2 justify-center py-4">
+                                {device.interfaces.length > 0 ? device.interfaces.map(iface => (
+                                    <div key={iface.id} className="group relative">
+                                        <div className={`w-10 h-8 rounded border-2 flex items-center justify-center relative ${iface.connectedToId ? 'bg-emerald-900/30 border-emerald-600' : 'bg-black/50 border-slate-600'}`}>
+                                             {/* RJ45 Shape */}
+                                             <div className="w-6 h-4 bg-black rounded-[1px] shadow-inner border-t border-slate-800"></div>
+                                             {/* Link Light */}
+                                             <div className={`absolute -top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${iface.connectedToId ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-slate-700'}`}></div>
+                                        </div>
+                                        <div className="text-[9px] text-slate-500 text-center mt-1 font-mono w-10 truncate">{iface.name.replace(/\D/g,'')}</div>
+                                        
+                                        {/* Tooltip */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-10">
+                                            {iface.name} <br/>
+                                            {iface.connectedToId ? 'Connected' : 'Link Down'}
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="text-slate-600 italic text-sm">No external ports visible</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-sm text-slate-400 mt-4">
+                        <p>This view represents the physical front-panel of the device. Green lights indicate an active physical connection.</p>
+                    </div>
+                </div>
+            )}
+
             {/* TAB: SETTINGS */}
             {activeTab === 'settings' && (
               <div className="space-y-6 max-w-xl animate-in fade-in slide-in-from-bottom-2 duration-300">

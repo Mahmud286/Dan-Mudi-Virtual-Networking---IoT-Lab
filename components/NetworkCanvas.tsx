@@ -26,6 +26,116 @@ interface NetworkCanvasProps {
   onToggleSimulation?: () => void;
 }
 
+// --- Cisco Packet Tracer Style SVG Components ---
+
+const CiscoRouter = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 100 100" className={className} style={style} filter="drop-shadow(3px 3px 2px rgba(0,0,0,0.3))">
+    <circle cx="50" cy="50" r="48" fill="#005e9c" stroke="#333" strokeWidth="1" />
+    <g transform="translate(50,50)">
+        <path d="M -20 0 L 20 0" stroke="white" strokeWidth="4" />
+        <path d="M 0 -20 L 0 20" stroke="white" strokeWidth="4" />
+        
+        <path d="M 20 0 L 10 -8 M 20 0 L 10 8" stroke="white" strokeWidth="3" fill="none" />
+        <path d="M -20 0 L -10 -8 M -20 0 L -10 8" stroke="white" strokeWidth="3" fill="none" />
+        <path d="M 0 20 L -8 10 M 0 20 L 8 10" stroke="white" strokeWidth="3" fill="none" />
+        <path d="M 0 -20 L -8 -10 M 0 -20 L 8 -10" stroke="white" strokeWidth="3" fill="none" />
+    </g>
+    <defs>
+        <radialGradient id="routerGrad" cx="30%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.1)" />
+        </radialGradient>
+    </defs>
+    <circle cx="50" cy="50" r="48" fill="url(#routerGrad)" />
+  </svg>
+);
+
+const CiscoSwitch = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 100 60" className={className} style={style} filter="drop-shadow(3px 3px 2px rgba(0,0,0,0.3))">
+    <rect x="2" y="2" width="96" height="56" fill="#005e9c" stroke="#333" strokeWidth="1" rx="4" />
+    <g transform="translate(50,30)">
+        <path d="M -25 -8 L 25 -8" stroke="white" strokeWidth="3" />
+        <path d="M 25 -8 L 18 -14 M 25 -8 L 18 -2" stroke="white" strokeWidth="3" fill="none" />
+        
+        <path d="M 25 8 L -25 8" stroke="white" strokeWidth="3" />
+        <path d="M -25 8 L -18 2 M -25 8 L -18 14" stroke="white" strokeWidth="3" fill="none" />
+    </g>
+    <rect x="2" y="2" width="96" height="56" fill="url(#routerGrad)" rx="4"/>
+  </svg>
+);
+
+const CiscoPC = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 100 100" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <rect x="10" y="10" width="80" height="60" rx="4" fill="#e8e4c9" stroke="#555" strokeWidth="1"/>
+        <rect x="15" y="15" width="70" height="50" fill="#222" />
+        <rect x="40" y="70" width="20" height="15" fill="#e8e4c9" stroke="#555" strokeWidth="1"/>
+        <path d="M 30 85 L 70 85 L 75 95 L 25 95 Z" fill="#e8e4c9" stroke="#555" strokeWidth="1"/>
+        <rect x="80" y="40" width="18" height="55" rx="1" fill="#e8e4c9" stroke="#555" strokeWidth="1" />
+        <line x1="85" y1="50" x2="93" y2="50" stroke="#aaa" strokeWidth="2" />
+    </svg>
+);
+
+const CiscoLaptop = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 100 80" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <path d="M 15 10 L 85 10 L 85 55 L 15 55 Z" fill="#e8e4c9" stroke="#555" strokeWidth="1" />
+        <rect x="20" y="15" width="60" height="35" fill="#222" />
+        <path d="M 5 55 L 95 55 L 90 75 L 10 75 Z" fill="#d0ccb0" stroke="#555" strokeWidth="1" />
+        <rect x="40" y="65" width="20" height="8" fill="#aaa" rx="1" />
+    </svg>
+);
+
+const CiscoServer = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 60 100" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <rect x="5" y="5" width="50" height="90" rx="2" fill="#005e9c" stroke="#333" strokeWidth="1" />
+        {[20, 35, 50, 65, 80].map(y => (
+            <line key={y} x1="10" y1={y} x2="50" y2={y} stroke="#88b5dd" strokeWidth="2" />
+        ))}
+        <circle cx="45" cy="12" r="2" fill="#0f0" />
+        <circle cx="38" cy="12" r="2" fill="#0f0" />
+    </svg>
+);
+
+const CiscoPrinter = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 100 100" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <path d="M 20 40 L 80 40 L 80 80 L 20 80 Z" fill="#e8e4c9" stroke="#555" strokeWidth="1" />
+        <path d="M 25 40 L 25 20 L 75 20 L 75 40" fill="white" stroke="#ccc" strokeWidth="1" />
+        <rect x="30" y="50" width="40" height="20" fill="#ccc" />
+        <line x1="35" y1="60" x2="65" y2="60" stroke="#999" strokeWidth="1"/>
+    </svg>
+);
+
+const CiscoFirewall = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 100 60" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <rect x="5" y="10" width="90" height="40" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
+        <path d="M 5 20 L 95 20 M 5 30 L 95 30 M 5 40 L 95 40" stroke="#fca5a5" strokeWidth="1" />
+        <path d="M 30 10 L 30 20 M 60 10 L 60 20 M 80 10 L 80 20" stroke="#fca5a5" strokeWidth="1" />
+        <path d="M 15 20 L 15 30 M 45 20 L 45 30 M 75 20 L 75 30" stroke="#fca5a5" strokeWidth="1" />
+        <path d="M 30 30 L 30 40 M 60 30 L 60 40" stroke="#fca5a5" strokeWidth="1" />
+        <defs>
+             <linearGradient id="wallGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.2)" />
+                <stop offset="100%" stopColor="rgba(0,0,0,0.1)" />
+             </linearGradient>
+        </defs>
+        <rect x="5" y="10" width="90" height="40" fill="url(#wallGrad)" />
+    </svg>
+);
+
+const CiscoCloud = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 100 70" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <path d="M 25 45 Q 10 45 10 30 Q 10 15 30 15 Q 40 0 60 10 Q 80 0 90 20 Q 100 30 90 50 Q 80 65 60 60 Q 40 70 25 45 Z" fill="white" stroke="#bbb" strokeWidth="1" />
+    </svg>
+);
+
+const CiscoAccessPoint = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
+    <svg viewBox="0 0 80 80" className={className} style={style} filter="drop-shadow(2px 2px 2px rgba(0,0,0,0.3))">
+        <rect x="20" y="40" width="40" height="30" fill="#005e9c" stroke="#333" strokeWidth="1" />
+        <line x1="40" y1="40" x2="40" y2="20" stroke="#333" strokeWidth="2" />
+        <path d="M 30 20 Q 40 10 50 20" stroke="#333" strokeWidth="2" fill="none" />
+        <path d="M 25 15 Q 40 0 55 15" stroke="#333" strokeWidth="2" fill="none" />
+    </svg>
+);
+
 // Realistic ESP32 SVG Component
 const ESP32Board = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
   <svg viewBox="0 0 160 300" className={className} style={style}>
@@ -81,19 +191,18 @@ const ESP32Board = ({ className, style }: { className?: string, style?: React.CS
 
 const DeviceIconComponent = ({ type, className, style }: { type: string; className?: string; style?: React.CSSProperties }) => {
   switch (type) {
+    // Custom Packet Tracer Style
     case DeviceType.ESP32: return <ESP32Board className={className} style={style} />;
-    
-    // Network
-    case DeviceType.PC: return <Monitor className={className} style={style} />;
-    case DeviceType.LAPTOP: return <Laptop className={className} style={style} />;
-    case DeviceType.SERVER: return <Server className={className} style={style} />;
-    case DeviceType.ROUTER: return <Router className={className} style={style} />;
-    case DeviceType.SWITCH: return <Network className={className} style={style} />;
-    case DeviceType.FIREWALL: return <Shield className={className} style={style} />;
-    case DeviceType.ACCESS_POINT: return <Radio className={className} style={style} />;
-    case DeviceType.PRINTER: return <Printer className={className} style={style} />;
-    case DeviceType.CLOUD: return <Cloud className={className} style={style} />;
-    
+    case DeviceType.ROUTER: return <CiscoRouter className={className} style={style} />;
+    case DeviceType.SWITCH: return <CiscoSwitch className={className} style={style} />;
+    case DeviceType.PC: return <CiscoPC className={className} style={style} />;
+    case DeviceType.LAPTOP: return <CiscoLaptop className={className} style={style} />;
+    case DeviceType.SERVER: return <CiscoServer className={className} style={style} />;
+    case DeviceType.PRINTER: return <CiscoPrinter className={className} style={style} />;
+    case DeviceType.FIREWALL: return <CiscoFirewall className={className} style={style} />;
+    case DeviceType.ACCESS_POINT: return <CiscoAccessPoint className={className} style={style} />;
+    case DeviceType.CLOUD: return <CiscoCloud className={className} style={style} />;
+
     // IoT Controllers
     case DeviceType.ARDUINO: return <Cpu className={className} style={style} />;
     case DeviceType.RASPBERRY_PI: return <Box className={className} style={style} />;
@@ -104,7 +213,7 @@ const DeviceIconComponent = ({ type, className, style }: { type: string; classNa
     case DeviceType.SENSOR_MOISTURE: return <Droplets className={className} style={style} />;
     case DeviceType.SENSOR_MOTION: return <Eye className={className} style={style} />;
     case DeviceType.SENSOR_GAS: return <Wind className={className} style={style} />;
-    case DeviceType.SENSOR_WATER: return <Droplets className={className} style={style} />; // Reuse droplets
+    case DeviceType.SENSOR_WATER: return <Droplets className={className} style={style} />; 
     case DeviceType.ACTUATOR_LED: return <Lightbulb className={className} style={style} />;
     case DeviceType.ACTUATOR_MOTOR: return <Fan className={className} style={style} />;
     case DeviceType.RELAY: return <ToggleLeft className={className} style={style} />;
@@ -116,18 +225,27 @@ const DeviceIconComponent = ({ type, className, style }: { type: string; classNa
 };
 
 const getDeviceColor = (type: string, isSelected: boolean) => {
-  if (type === DeviceType.ESP32) return 'bg-transparent shadow-none border-none'; // Custom rendering for ESP32
+  // Types that have custom SVGs (no background box)
+  const isCustomRender = [
+      DeviceType.ESP32,
+      DeviceType.ROUTER, DeviceType.SWITCH, DeviceType.PC, DeviceType.LAPTOP,
+      DeviceType.SERVER, DeviceType.PRINTER, DeviceType.FIREWALL, 
+      DeviceType.CLOUD, DeviceType.ACCESS_POINT
+  ].includes(type as DeviceType);
 
+  if (isCustomRender) {
+      if (isSelected) return 'bg-transparent ring-2 ring-blue-500 rounded-lg'; 
+      return 'bg-transparent border-none shadow-none';
+  }
+
+  // Standard Lucide Icon containers
   if (isSelected) return 'bg-blue-600 ring-2 ring-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.5)]';
   
   if (type.startsWith('SENSOR')) return 'bg-amber-800 hover:bg-amber-700 border-amber-600';
   if (type.startsWith('ACTUATOR')) return 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600';
   if (type === DeviceType.ARDUINO || type === DeviceType.RASPBERRY_PI) return 'bg-teal-900 hover:bg-teal-800 border-teal-700';
-  if (type === DeviceType.FIREWALL) return 'bg-red-900 hover:bg-red-800 border-red-700';
-  if (type === DeviceType.CLOUD) return 'bg-sky-900 hover:bg-sky-800 border-sky-700';
-  if (type === DeviceType.PRINTER) return 'bg-indigo-900 hover:bg-indigo-800 border-indigo-700';
   
-  return 'bg-slate-800 hover:bg-slate-700 border-slate-600'; // Default Network
+  return 'bg-slate-800 hover:bg-slate-700 border-slate-600'; // Default
 };
 
 export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
@@ -241,6 +359,10 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     const d = devices.find(dev => dev.id === id);
     if (!d) return { x: 0, y: 0 };
     if (d.type === DeviceType.ESP32) return { x: d.x + 60, y: d.y + 100 };
+    // Packet Tracer devices center adjustment
+    const isNetwork = [DeviceType.ROUTER, DeviceType.SWITCH, DeviceType.PC, DeviceType.LAPTOP, DeviceType.SERVER, DeviceType.PRINTER, DeviceType.FIREWALL, DeviceType.CLOUD, DeviceType.ACCESS_POINT].includes(d.type as DeviceType);
+    if (isNetwork) return { x: d.x + 40, y: d.y + 40 }; // Center of 80x80 box
+    
     return { x: d.x + 32, y: d.y + 32 }; 
   };
 
@@ -399,6 +521,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             const isSelected = selectedDeviceId === device.id;
             let colorClass = getDeviceColor(device.type, isSelected);
             const isESP32 = device.type === DeviceType.ESP32;
+            const isNetwork = [DeviceType.ROUTER, DeviceType.SWITCH, DeviceType.PC, DeviceType.LAPTOP, DeviceType.SERVER, DeviceType.PRINTER, DeviceType.FIREWALL, DeviceType.CLOUD, DeviceType.ACCESS_POINT].includes(device.type as DeviceType);
             
             // Custom style for LEDs with specific colors
             let customStyle: React.CSSProperties = {};
@@ -416,7 +539,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             return (
             <div
                 key={device.id}
-                className={`absolute flex flex-col items-center group select-none z-10 ${isESP32 ? 'w-[120px] h-[200px]' : 'w-16 h-16'} ${toolMode === 'erase' ? 'hover:opacity-50 hover:scale-95' : ''}`}
+                className={`absolute flex flex-col items-center group select-none z-10 ${isESP32 ? 'w-[120px] h-[200px]' : (isNetwork ? 'w-20 h-20' : 'w-16 h-16')} ${toolMode === 'erase' ? 'hover:opacity-50 hover:scale-95' : ''}`}
                 style={{ 
                 left: device.x, 
                 top: device.y,
@@ -438,14 +561,14 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
                 >
                 <DeviceIconComponent 
                     type={device.type} 
-                    className={`${isESP32 ? 'w-full h-full drop-shadow-2xl' : 'w-8 h-8'} ${!device.color && !isESP32 ? 'text-slate-100' : ''}`} 
+                    className={`${isESP32 ? 'w-full h-full drop-shadow-2xl' : 'w-full h-full'} ${!device.color && !isESP32 && !isNetwork ? 'text-slate-100' : ''}`} 
                     style={device.color ? { color: device.color } : {}}
                 />
                 </div>
 
                 {/* Label */}
                 {!isESP32 && (
-                    <div className="mt-2 px-2 py-0.5 bg-slate-800/80 rounded text-[10px] text-slate-200 whitespace-nowrap border border-slate-700 pointer-events-none">
+                    <div className="mt-1 px-2 py-0.5 bg-slate-800/80 rounded text-[10px] text-slate-200 whitespace-nowrap border border-slate-700 pointer-events-none shadow-md">
                     {device.name}
                     </div>
                 )}
